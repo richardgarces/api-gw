@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>API Gateway Admin</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; }
+    th { background: #eee; }
+    input, button { margin: 0.2em; }
+  </style>
+</head>
+<body>
+  <h1>Panel de Administración - API Gateway</h1>
+  <section>
+    <h2>Servicios</h2>
+    <button onclick="loadServices()">Actualizar</button>
+    <table id="services">
+      <thead>
+        <tr><th>ID</th><th>Nombre</th><th>Targets</th><th>Plugins</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Rutas</h2>
+    <button onclick="loadRoutes()">Actualizar</button>
+    <table id="routes">
+      <thead>
+        <tr><th>ID</th><th>Path</th><th>ServiceID</th><th>Plugins</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <script>
+    async function loadServices() {
+      const res = await fetch('/admin/services');
+      const data = await res.json();
+      const tbody = document.querySelector('#services tbody');
+      tbody.innerHTML = '';
+      data.forEach(s => {
+        tbody.innerHTML += `<tr>
+          <td>${s.id}</td>
+          <td>${s.name}</td>
+          <td>${(s.targets||[]).join('<br>')}</td>
+          <td><pre>${JSON.stringify(s.plugins, null, 2)}</pre></td>
+        </tr>`;
+      });
+    }
+    async function loadRoutes() {
+      const res = await fetch('/admin/routes');
+      const data = await res.json();
+      const tbody = document.querySelector('#routes tbody');
+      tbody.innerHTML = '';
+      data.forEach(r => {
+        tbody.innerHTML += `<tr>
+          <td>${r.id}</td>
+          <td>${r.path}</td>
+          <td>${r.service_id}</td>
+          <td><pre>${JSON.stringify(r.plugins, null, 2)}</pre></td>
+        </tr>`;
+      });
+    }
+    loadServices();
+    loadRoutes();
+  </script>
+</body>
+</html>
