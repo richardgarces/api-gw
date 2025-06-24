@@ -1,0 +1,15 @@
+zerops:
+  - setup: apigw
+    run:
+      base: docker@26.1
+      # download and cache docker image
+      prepareCommands:
+        - docker image pull rgarces/api-gw:latest
+      # start docker, --network=host needed
+      start: docker run --network=host rgarces/api-gw:latest
+
+      # what ports docker exposes
+      # and whether it supports http traffic
+      ports:
+        - port: 8000
+          httpSupport: true
