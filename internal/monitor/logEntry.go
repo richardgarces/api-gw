@@ -15,8 +15,11 @@ type LogEntry struct {
 	RemoteIP  string        `json:"remote_ip"`
 	Method    string        `json:"method"`
 	Path      string        `json:"path"`
+	Target    string        `json:"target,omitempty"`
 	Duration  time.Duration `json:"duration"`
 	Status    int           `json:"status"`
+	UserAgent string        `json:"user_agent"`
+	Referer   string        `json:"referer"`
 }
 
 type statusWriter struct {
@@ -56,13 +59,17 @@ func LogMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w, status: 200}
 		next.ServeHTTP(sw, r)
+		target, _ := r.Context().Value("target").(string)
 		entry := LogEntry{
 			Timestamp: time.Now().Format(time.RFC3339),
 			RemoteIP:  r.RemoteAddr,
 			Method:    r.Method,
 			Path:      r.URL.Path,
-			Duration:  time.Since(start),
+			Target:    target,
 			Status:    sw.status,
+			Duration:  time.Since(start),
+			UserAgent: r.UserAgent(),
+			Referer:   r.Referer(),
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.Encode(entry)

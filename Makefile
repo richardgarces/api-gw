@@ -1,14 +1,28 @@
+# Makefile for Proyecto Web Project
+SHELL := /bin/bash
+.DEFAULT_GOAL := push
+.PHONY: run build docker push clean help
+
+help:
+	@echo "Comandos disponibles:"
+	@echo "  run      - Compila y ejecuta el binario"
+	@echo "  build    - Compila el binario"
+	@echo "  docker   - Construye la imagen Docker (rgarces/api-gw:latest)"
+	@echo "  push     - Sube la imagen Docker a Docker Hub"
+	@echo "  clean    - Limpia binarios y archivos temporales"
+
 build:
-    go build -o api-gw ./cmd/main.go
+	go build -o api-gw ./cmd/main.go
 
 run: build
-    ./api-gw
+	./api-gw
 
-docker-build:
-    docker build -t api-gw .
+docker: build
+	docker build --platform linux/amd64 -t rgarces/api-gw:latest .
 
-docker-run:
-    docker run -p 8080:8080 api-gw
+push: docker
+	docker push rgarces/api-gw:latest
 
-test:
-    go test ./internal/...
+clean:
+	go clean
+	rm -rf api-gw

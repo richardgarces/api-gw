@@ -51,7 +51,7 @@ func RoutesHandler(w http.ResponseWriter, r *http.Request) {
 			var route models.Route
 			err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&route)
 			if err != nil {
-				utils.Error(w, http.StatusNotFound, "Ruta no encontrada")
+				utils.Error(w, http.StatusNotFound, "Ruta no encontrada 4")
 				return
 			}
 			utils.JSON(w, http.StatusOK, route)

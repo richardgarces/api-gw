@@ -1,0 +1,6 @@
+body { font-family: sans-serif; margin: 2em; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
+th, td { border: 1px solid #ccc; padding: 0.5em; }
+th { background: #eee; }
+input, button { margin: 0.2em; }
+#token-box { margin-bottom: 1em; }

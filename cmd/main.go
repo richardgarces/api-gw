@@ -2,18 +2,17 @@ package main
 
 import (
 	"api-gw/internal/admin"
-	"api-gw/internal/cache"
 	"api-gw/internal/config"
 	"api-gw/internal/db"
 	"api-gw/internal/limiter"
 	"api-gw/internal/monitor"
 	"api-gw/internal/proxy"
 	"api-gw/internal/routes"
-	"api-gw/internal/security"
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -29,36 +28,61 @@ func main() {
 	}
 	defer client.Disconnect(nil)
 
-	routeManager, err := routes.NewRouteManager("mongodb://localhost:27017")
+	//routeManager, err := routes.NewRouteManager("mongodb://localhost:27017")
+	routeManager, err := routes.NewRouteManager(cfg.MongoURI)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	mux := http.NewServeMux()
+
+	// Handler combinado para "/" y proxy general
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Gateway OK"))
+			return
+		}
+		monitor.PrometheusMiddleware(
+			limiter.LimitMiddleware(
+				monitor.LogMiddleware(
+					proxy.NewReverseProxy(routeManager),
+				),
+			),
+		).ServeHTTP(w, r)
+	})
+
 	mux.HandleFunc("/admin/services", admin.ServicesHandler)
 	mux.HandleFunc("/admin/routes", admin.RoutesHandler)
 	mux.HandleFunc("/admin/openapi", admin.OpenAPIHandler)
 	mux.Handle("/metrics", monitor.PrometheusHandler())
-	mux.Handle("/", monitor.PrometheusMiddleware(
-		security.AuthMiddleware(
-			limiter.LimitMiddleware(
-				cache.CacheMiddleware(
-					monitor.LogMiddleware(
-						proxy.NewReverseProxy(routeManager),
-					),
-				),
-			),
-		),
-	))
 	mux.Handle("/admin/", http.StripPrefix("/admin/", http.FileServer(http.Dir("webadmin"))))
+
+	// Configuración de JWT para el panel admin
+	jwtSecret := os.Getenv("ADMIN_JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "miclaveultrasecreta"
+	}
+	jwtDurationStr := os.Getenv("ADMIN_JWT_DURATION")
+	jwtDuration := time.Hour * 24 * 365 // 1 año por defecto
+	if jwtDurationStr != "" {
+		if dur, err := strconv.Atoi(jwtDurationStr); err == nil {
+			jwtDuration = time.Duration(dur) * time.Second
+		}
+	}
+
+	// Endpoint para obtener el token JWT para el panel admin
+	mux.HandleFunc("/admin/token", func(w http.ResponseWriter, r *http.Request) {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"sub": "admin",
+			"exp": time.Now().Add(jwtDuration).Unix(),
+		})
+		tokenString, _ := token.SignedString([]byte(jwtSecret))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	})
 
 	log.Printf("API Gateway escuchando en :%s", cfg.HTTPPort)
 	log.Fatal(http.ListenAndServe(":"+cfg.HTTPPort, mux))
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "usuario1",
-		"exp": time.Now().Add(time.Hour).Unix(),
-	})
-	tokenString, _ := token.SignedString([]byte("miclaveultrasecreta"))
-	fmt.Println(tokenString)
 }
