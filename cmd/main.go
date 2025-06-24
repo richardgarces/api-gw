@@ -41,7 +41,7 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Gateway OK"))
+			w.Write([]byte("Api - Gateway OK"))
 			return
 		}
 		monitor.PrometheusMiddleware(
